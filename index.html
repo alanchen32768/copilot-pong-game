@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>Pong Game - Touch Support & Score Rule</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     body { background: #222; display: flex; flex-direction: column; align-items: center; }
     canvas { background: #000; display: block; margin: 20px auto; touch-action: none; }
     h1, p, #message { color: #fff; }
     #controls { margin: 20px; }
-    button { padding: 10px 30px; font-size: 16px; margin: 5px; }
+    button { padding: 16px 40px; font-size: 18px; margin: 8px; border-radius: 8px; border: none; background: #3178c6; color: #fff; }
+    button:active { background: #265a8a; }
   </style>
 </head>
 <body>
@@ -55,7 +57,6 @@
     function resetBall() {
       ballX = canvas.width / 2 - ballSize / 2;
       ballY = canvas.height / 2 - ballSize / 2;
-      // 球速度仅在游戏进行时有效
       ballSpeedX = running && !gameOver ? 5 * (Math.random() > 0.5 ? 1 : -1) : 0;
       ballSpeedY = running && !gameOver ? 5 * (Math.random() > 0.5 ? 1 : -1) : 0;
     }
@@ -80,21 +81,15 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // 挡板
       ctx.fillStyle = "#fff";
       ctx.fillRect(20, leftPaddleY, paddleWidth, paddleHeight);
       ctx.fillRect(canvas.width - 20 - paddleWidth, rightPaddleY, paddleWidth, paddleHeight);
-
-      // 球
       ctx.fillRect(ballX, ballY, ballSize, ballSize);
 
-      // 分数
       ctx.font = "40px Arial";
       ctx.fillText(leftScore, canvas.width / 4, 50);
       ctx.fillText(rightScore, canvas.width * 3 / 4, 50);
 
-      // 若未开始或已结束，显示提示
       if (!running && !gameOver) {
         ctx.font = "32px Arial";
         ctx.fillText("点击开始游戏", canvas.width / 2 - 120, canvas.height / 2);
@@ -103,23 +98,16 @@
 
     function update() {
       if (!running) return;
-
-      // 挡板移动
       leftPaddleY += leftPaddleSpeed;
       rightPaddleY += rightPaddleSpeed;
       leftPaddleY = Math.max(0, Math.min(canvas.height - paddleHeight, leftPaddleY));
       rightPaddleY = Math.max(0, Math.min(canvas.height - paddleHeight, rightPaddleY));
 
-      // 球运动
       ballX += ballSpeedX;
       ballY += ballSpeedY;
 
-      // 球碰撞上下边界
-      if (ballY <= 0 || ballY + ballSize >= canvas.height) {
-        ballSpeedY *= -1;
-      }
+      if (ballY <= 0 || ballY + ballSize >= canvas.height) ballSpeedY *= -1;
 
-      // 球碰撞挡板
       if (
         ballX <= 30 &&
         ballY + ballSize >= leftPaddleY &&
@@ -137,7 +125,6 @@
         ballX = canvas.width - 30 - ballSize;
       }
 
-      // 得分
       if (ballX < 0) {
         rightScore++;
         if (rightScore >= WIN_SCORE) {
@@ -170,46 +157,38 @@
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') rightPaddleSpeed = 0;
     });
 
-    // 触屏控制
-    let leftPaddleTouchId = null;
-    let rightPaddleTouchId = null;
-
-    canvas.addEventListener('touchstart', function(e) {
+    // 优化触屏控制：整个屏幕左右半区控制对应挡板
+    function handleTouchMove(e) {
       if (!running) return;
-      for (let touch of e.changedTouches) {
-        if (touch.clientX < canvas.getBoundingClientRect().left + canvas.width/2) {
-          leftPaddleTouchId = touch.identifier;
-        } else {
-          rightPaddleTouchId = touch.identifier;
-        }
-      }
-    }, {passive: false});
-
-    canvas.addEventListener('touchmove', function(e) {
-      if (!running) return;
-      for (let touch of e.changedTouches) {
-        const rect = canvas.getBoundingClientRect();
-        const y = touch.clientY - rect.top;
-        if (touch.identifier === leftPaddleTouchId) {
+      for (let touch of e.touches) {
+        const screenMid = window.innerWidth / 2;
+        // 按屏幕高度映射到 canvas 高度
+        const canvasRect = canvas.getBoundingClientRect();
+        const y = ((touch.clientY - canvasRect.top) / canvasRect.height) * canvas.height;
+        if (touch.clientX < screenMid) {
           leftPaddleY = y - paddleHeight / 2;
           leftPaddleY = Math.max(0, Math.min(canvas.height - paddleHeight, leftPaddleY));
-        }
-        if (touch.identifier === rightPaddleTouchId) {
+        } else {
           rightPaddleY = y - paddleHeight / 2;
           rightPaddleY = Math.max(0, Math.min(canvas.height - paddleHeight, rightPaddleY));
         }
       }
       e.preventDefault();
-    }, {passive: false});
+    }
 
-    canvas.addEventListener('touchend', function(e) {
-      for (let touch of e.changedTouches) {
-        if (touch.identifier === leftPaddleTouchId) leftPaddleTouchId = null;
-        if (touch.identifier === rightPaddleTouchId) rightPaddleTouchId = null;
-      }
-    }, {passive: false});
+    window.addEventListener('touchmove', handleTouchMove, {passive: false});
 
-    // 按钮事件
+    // 按钮触屏适配
+    startBtn.addEventListener('touchstart', (e) => { startGame(); e.preventDefault(); });
+    restartBtn.addEventListener('touchstart', (e) => { 
+      startBtn.style.display = '';
+      restartBtn.style.display = 'none';
+      resetGameVars();
+      draw();
+      e.preventDefault();
+    });
+
+    // 按钮鼠标适配
     startBtn.onclick = startGame;
     restartBtn.onclick = () => {
       startBtn.style.display = '';
@@ -226,7 +205,6 @@
       draw();
       requestAnimationFrame(gameLoop);
     }
-
     gameLoop();
   </script>
 </body>
