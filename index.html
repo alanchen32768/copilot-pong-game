@@ -159,7 +159,7 @@
     canvas.addEventListener('touchstart', function(e) {
       if (!running) return;
       for (let touch of e.changedTouches) {
-        if (touch.clientX < canvas.getBoundingClientRect().left + canvas.width/2) {
+        if (touch.clientX < canvas.getBoundingClientRect().left + canvas.getBoundingClientRect().width/2) {
           leftPaddleTouchId = touch.identifier;
         } else {
           rightPaddleTouchId = touch.identifier;
